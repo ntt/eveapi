@@ -25,6 +25,9 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.1.2 - 2 July 2010
+# - Fixed __str__ on row objects to work properly with unicode strings.
+#
 # Version: 1.1.1 - 10 Januari 2010
 # - Fixed bug that causes nested tags to not appear in rows of rowsets created
 #   from normal Elements. This should fix the corp.MemberSecurity method,

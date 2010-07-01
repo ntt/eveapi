@@ -303,8 +303,19 @@ class _RootContext(_Context):
 		else:
 			store = False
 
-		return _ParseXML(response, True, store and (lambda obj: cache.store(self._host, path, kw, response, obj)))
-
+		retrieve_fallback = cache and getattr(cache, "retrieve_fallback", False)
+		if retrieve_fallback:
+			# implementor is handling fallbacks...
+			try:
+				return _ParseXML(response, True, store and (lambda obj: cache.store(self._host, path, kw, response, obj)))
+			except Error, reason:
+				response = retrieve_fallback(self._host, path, kw, reason=e)
+				if response is not None:
+					return response
+				raise
+		else:
+			# implementor is not handling fallbacks...
+			return _ParseXML(response, True, store and (lambda obj: cache.store(self._host, path, kw, response, obj)))
 
 #-----------------------------------------------------------------------------
 # XML Parser
@@ -517,7 +528,7 @@ class Element(object):
 	def __str__(self):
 		return "<Element '%s'>" % self._name
 
-
+_fmt = u"%s:%s".__mod__
 class Row(object):
 	# A Row is a single database record associated with a Rowset.
 	# The fields in the record are accessed as attributes by their respective
@@ -554,7 +565,7 @@ class Row(object):
 		return self._row[self._cols.index(this)]
 
 	def __str__(self):
-		return "Row(" + ','.join(map(lambda k, v: "%s:%s" % (str(k), str(v)), self._cols, self._row)) + ")"
+		return "Row(" + ','.join(map(_fmt, zip(self._cols, self._row))) + ")"
 
 
 class Rowset(object):

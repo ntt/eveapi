@@ -306,19 +306,7 @@ class _RootContext(_Context):
 		else:
 			store = False
 
-		retrieve_fallback = cache and getattr(cache, "retrieve_fallback", False)
-		if retrieve_fallback:
-			# implementor is handling fallbacks...
-			try:
-				return _ParseXML(response, True, store and (lambda obj: cache.store(self._host, path, kw, response, obj)))
-			except Error, reason:
-				response = retrieve_fallback(self._host, path, kw, reason=e)
-				if response is not None:
-					return response
-				raise
-		else:
-			# implementor is not handling fallbacks...
-			return _ParseXML(response, True, store and (lambda obj: cache.store(self._host, path, kw, response, obj)))
+		return _ParseXML(response, True, store and (lambda obj: cache.store(self._host, path, kw, response, obj)))
 
 #-----------------------------------------------------------------------------
 # XML Parser

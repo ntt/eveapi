@@ -25,6 +25,10 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.1.3 - 6 November 2010
+# - Added support for anonymous CDATA inside row tags. This makes the body of
+#   mails in the rows of char/MailBodies available through the .data attribute.
+#
 # Version: 1.1.2 - 2 July 2010
 # - Fixed __str__ on row objects to work properly with unicode strings.
 #
@@ -306,7 +310,19 @@ class _RootContext(_Context):
 		else:
 			store = False
 
-		return _ParseXML(response, True, store and (lambda obj: cache.store(self._host, path, kw, response, obj)))
+		retrieve_fallback = cache and getattr(cache, "retrieve_fallback", False)
+		if retrieve_fallback:
+			# implementor is handling fallbacks...
+			try:
+				return _ParseXML(response, True, store and (lambda obj: cache.store(self._host, path, kw, response, obj)))
+			except Error, reason:
+				response = retrieve_fallback(self._host, path, kw, reason=e)
+				if response is not None:
+					return response
+				raise
+		else:
+			# implementor is not handling fallbacks...
+			return _ParseXML(response, True, store and (lambda obj: cache.store(self._host, path, kw, response, obj)))
 
 #-----------------------------------------------------------------------------
 # XML Parser
@@ -345,6 +361,8 @@ class _Parser(object):
 		p = expat.ParserCreate()
 		p.StartElementHandler = self.tag_start
 		p.CharacterDataHandler = self.tag_cdata
+		p.StartCdataSectionHandler = self.tag_cdatasection_enter
+		p.EndCdataSectionHandler = self.tag_cdatasection_exit
 		p.EndElementHandler = self.tag_end
 		p.ordered_attributes = True
 		p.buffer_text = True
@@ -354,7 +372,12 @@ class _Parser(object):
 		else:
 			p.Parse(data, True)
 		return self.root
-		
+
+	def tag_cdatasection_enter(self):
+		self._cdata = True
+	def tag_cdatasection_exit(self):
+		del self._cdata
+
 
 	def tag_start(self, name, attributes):
 		# <hack>
@@ -413,13 +436,23 @@ class _Parser(object):
 
 
 	def tag_cdata(self, data):
-		if data == "\r\n" or data.strip() != data:
-			return
+		if not hasattr(self, "_cdata"):
+			if data == "\r\n" or data.strip() != data:
+				return
 
 		this = self.container
 		data = _autocast(data)
 
-		if this._attributes:
+		if this._isrow:
+			# sigh. anonymous data inside rows makes Entity cry.
+			# for the love of Jove, CCP, learn how to use rowsets.
+			parent = this.__parent
+			_row = parent._rows[-1]
+			_row.append(data)
+			if len(parent._cols) < len(_row):
+				parent._cols.append("data")
+
+		elif this._attributes:
 			# this tag has attributes, so we can't simply assign the cdata
 			# as an attribute to the parent tag, as we'll lose the current
 			# tag's attributes then. instead, we'll assign the data as
@@ -430,7 +463,6 @@ class _Parser(object):
 			# we won't be doing anything with this actual tag so we can just
 			# bind it to its parent (done by __tag_end)
 			setattr(this.__parent, this._name, data)
-
 
 	def tag_end(self, name):
 		this = self.container

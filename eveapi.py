@@ -328,36 +328,38 @@ class _RootContext(_Context):
 # XML Parser
 #-----------------------------------------------------------------------------
 
-def _autocast(s):
+def _autocast(key, value):
 	# attempts to cast an XML string to the most probable type.
 	try:
-		if s.strip("-").isdigit():
-			return int(s)
+		if value.strip("-").isdigit():
+			return int(value)
 	except ValueError:
 		pass
 
 	try:
-		return float(s)
+		return float(value)
 	except ValueError:
 		pass
 
-	if len(s) == 19 and s[10] == ' ':
+	if len(value) == 19 and value[10] == ' ':
 		# it could be a date string
 		try:
-			return max(0, int(timegm(strptime(s, "%Y-%m-%d %H:%M:%S"))))
+			return max(0, int(timegm(strptime(value, "%Y-%m-%d %H:%M:%S"))))
 		except OverflowError:
 			pass
 		except ValueError:
 			pass
 
 	# couldn't cast. return string unchanged.
-	return s
+	return value
+
 
 
 class _Parser(object):
 
 	def Parse(self, data, isStream=False):
 		self.container = self.root = None
+		self._cdata = False
 		p = expat.ParserCreate()
 		p.StartElementHandler = self.tag_start
 		p.CharacterDataHandler = self.tag_cdata
@@ -373,11 +375,19 @@ class _Parser(object):
 			p.Parse(data, True)
 		return self.root
 
-	def tag_cdatasection_enter(self):
-		self._cdata = True
-	def tag_cdatasection_exit(self):
-		del self._cdata
 
+	def tag_cdatasection_enter(self):
+		# encountered an explicit CDATA tag.
+		self._cdata = True
+
+	def tag_cdatasection_exit(self):
+		if self._cdata:
+			# explicit CDATA without actual data. expat doesn't seem
+			# to trigger an event for this case, so do it manually.
+			# (_cdata is set False by this call)
+			self.tag_cdata("")
+		else:
+			self._cdata = False
 
 	def tag_start(self, name, attributes):
 		# <hack>
@@ -424,7 +434,7 @@ class _Parser(object):
 			if not self.container._cols:
 				self.container._cols = attributes[0::2]
 
-			self.container.append([_autocast(attributes[i]) for i in range(1, len(attributes), 2)])
+			self.container.append([_autocast(attributes[i], attributes[i+1]) for i in xrange(0, len(attributes), 2)])
 			this._isrow = True
 			this._attributes = this._attributes2 = None
 		else:
@@ -436,12 +446,15 @@ class _Parser(object):
 
 
 	def tag_cdata(self, data):
-		if not hasattr(self, "_cdata"):
-			if data == "\r\n" or data.strip() != data:
+		if self._cdata:
+			# unset cdata flag to indicate it's been handled.
+			self._cdata = False
+		else:
+			if data in ("\r\n", "\n") or data.strip() != data:
 				return
 
 		this = self.container
-		data = _autocast(data)
+		data = _autocast(this._name, data)
 
 		if this._isrow:
 			# sigh. anonymous data inside rows makes Entity cry.
@@ -507,7 +520,7 @@ class _Parser(object):
 			# multiples of some tag or attribute. Code below handles this case.
 			elif isinstance(sibling, Rowset):
 				# its doppelganger is a rowset, append this as a row to that.
-				row = [_autocast(attributes[i]) for i in range(1, len(attributes), 2)]
+				row = [_autocast(attributes[i], attributes[i+1]) for i in xrange(0, len(attributes), 2)]
 				row.extend([getattr(this, col) for col in attributes2])
 				sibling.append(row)
 			elif isinstance(sibling, Element):
@@ -516,11 +529,11 @@ class _Parser(object):
 				# into a Rowset, adding the sibling element and this one.
 				rs = Rowset()
 				rs.__catch = rs._name = this._name
-				row = [_autocast(attributes[i]) for i in range(1, len(attributes), 2)]+[getattr(this, col) for col in attributes2]
+				row = [_autocast(attributes[i], attributes[i+1]) for i in xrange(0, len(attributes), 2)]+[getattr(this, col) for col in attributes2]
 				rs.append(row)
-				row = [getattr(sibling, attributes[i]) for i in range(0, len(attributes), 2)]+[getattr(sibling, col) for col in attributes2]
+				row = [getattr(sibling, attributes[i]) for i in xrange(0, len(attributes), 2)]+[getattr(sibling, col) for col in attributes2]
 				rs.append(row)
-				rs._cols = [attributes[i] for i in range(0, len(attributes), 2)]+[col for col in attributes2]
+				rs._cols = [attributes[i] for i in xrange(0, len(attributes), 2)]+[col for col in attributes2]
 				setattr(self.container, this._name, rs)
 			else:
 				# something else must have set this attribute already.
@@ -528,8 +541,8 @@ class _Parser(object):
 				pass
 
 		# Now fix up the attributes and be done with it.
-		for i in range(1, len(attributes), 2):
-			this.__dict__[attributes[i-1]] = _autocast(attributes[i])
+		for i in xrange(0, len(attributes), 2):
+			this.__dict__[attributes[i]] = _autocast(attributes[i], attributes[i+1])
 
 		return
 

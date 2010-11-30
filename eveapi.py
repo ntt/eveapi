@@ -25,6 +25,11 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.1.4 - 1 December 2010
+# - Empty explicit CDATA tags are now properly handled.
+# - _autocast now receives the name of the variable it's trying to typecast,
+#   enabling custom/future casting functions to make smarter decisions.
+#
 # Version: 1.1.3 - 6 November 2010
 # - Added support for anonymous CDATA inside row tags. This makes the body of
 #   mails in the rows of char/MailBodies available through the .data attribute.

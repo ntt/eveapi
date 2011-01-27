@@ -296,7 +296,7 @@ class _RootContext(_Context):
 			response = None
 
 		if response is None:
-			if self.scheme == "https":
+			if self._scheme == "https":
 				connectionclass = httplib.HTTPSConnection
 			else:
 				connectionclass = httplib.HTTPConnection

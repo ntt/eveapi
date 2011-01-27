@@ -25,6 +25,10 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.1.5 - 27 Januari 2011
+# - Now supports (and defaults to) HTTPS. Non-SSL proxies will still work by
+#   explicitly specifying http:// in the url.
+#
 # Version: 1.1.4 - 1 December 2010
 # - Empty explicit CDATA tags are now properly handled.
 # - _autocast now receives the name of the variable it's trying to typecast,
@@ -106,7 +110,7 @@ class Error(StandardError):
 		self.args = (message.rstrip("."),)
 
 
-def EVEAPIConnection(url="api.eve-online.com", cacheHandler=None, proxy=None):
+def EVEAPIConnection(url="api.eveonline.com", cacheHandler=None, proxy=None):
 	# Creates an API object through which you can call remote functions.
 	#
 	# The following optional arguments may be provided:
@@ -142,8 +146,12 @@ def EVEAPIConnection(url="api.eve-online.com", cacheHandler=None, proxy=None):
 	#          this object.
 	#
 
+	scheme = "https"
 	if url.lower().startswith("http://"):
+		scheme = "http"
 		url = url[7:]
+	elif url.lower().startswith("https://"):
+		url = url[8:]
 
 	if "/" in url:
 		url, path = url.split("/", 1)
@@ -152,6 +160,7 @@ def EVEAPIConnection(url="api.eve-online.com", cacheHandler=None, proxy=None):
 
 	ctx = _RootContext(None, path, {}, {})
 	ctx._handler = cacheHandler
+	ctx._scheme = scheme
 	ctx._host = url
 	ctx._proxy = proxy or globals()["proxy"]
 	return ctx
@@ -287,18 +296,23 @@ class _RootContext(_Context):
 			response = None
 
 		if response is None:
+			if self.scheme == "https":
+				connectionclass = httplib.HTTPSConnection
+			else:
+				connectionclass = httplib.HTTPConnection
+
 			if self._proxy is None:
-				http = httplib.HTTPConnection(self._host)
+				http = connectionclass(self._host)
 				if kw:
 					http.request("POST", path, urllib.urlencode(kw), {"Content-type": "application/x-www-form-urlencoded"})
 				else:
 					http.request("GET", path)
 			else:
-				http = httplib.HTTPConnection(*self._proxy)
+				http = connectionclass(*self._proxy)
 				if kw:
-					http.request("POST", 'http://'+self._host+path, urllib.urlencode(kw), {"Content-type": "application/x-www-form-urlencoded"})
+					http.request("POST", 'https://'+self._host+path, urllib.urlencode(kw), {"Content-type": "application/x-www-form-urlencoded"})
 				else:
-					http.request("GET", 'http://'+self._host+path)
+					http.request("GET", 'https://'+self._host+path)
 
 			response = http.getresponse()
 			if response.status != 200:

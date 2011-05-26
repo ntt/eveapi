@@ -93,6 +93,7 @@
 #-----------------------------------------------------------------------------
 
 import httplib
+import urlparse
 import urllib
 import copy
 
@@ -146,22 +147,14 @@ def EVEAPIConnection(url="api.eveonline.com", cacheHandler=None, proxy=None):
 	#          this object.
 	#
 
-	scheme = "https"
-	if url.lower().startswith("http://"):
-		scheme = "http"
-		url = url[7:]
-	elif url.lower().startswith("https://"):
-		url = url[8:]
 
-	if "/" in url:
-		url, path = url.split("/", 1)
-	else:
-		path = ""
-
-	ctx = _RootContext(None, path, {}, {})
+	p = urlparse.urlparse(url, "https")
+	if p.path[-1] == "/":
+		p.path = p.path[:-1]
+	ctx = _RootContext(None, p.path, {}, {})
 	ctx._handler = cacheHandler
-	ctx._scheme = scheme
-	ctx._host = url
+	ctx._scheme = p.scheme
+	ctx._host = p.netloc
 	ctx._proxy = proxy or globals()["proxy"]
 	return ctx
 
@@ -313,6 +306,8 @@ class _RootContext(_Context):
 					http.request("POST", 'https://'+self._host+path, urllib.urlencode(kw), {"Content-type": "application/x-www-form-urlencoded"})
 				else:
 					http.request("GET", 'https://'+self._host+path)
+
+			print self._host, path, kw
 
 			response = http.getresponse()
 			if response.status != 200:
@@ -759,13 +754,22 @@ class IndexRowset(Rowset):
 
 	def __init__(self, cols=None, rows=None, key=None):
 		try:
-			self._ki = ki = cols.index(key)
+			if "," in key:
+				self._ki = ki = [cols.index(k) for k in key.split(",")]
+				self.composite = True
+			else:
+				self._ki = ki = cols.index(key)
+				self.composite = False
 		except IndexError:
 			raise ValueError("Rowset has no column %s" % key)
 
 		Rowset.__init__(self, cols, rows)
 		self._key = key
-		self._items = dict((row[ki], row) for row in self._rows)
+
+		if self.composite:
+			self._items = dict((tuple([row[k] for k in ki]), row) for row in self._rows)
+		else:
+			self._items = dict((row[ki], row) for row in self._rows)
 
 	def __getitem__(self, ix):
 		if type(ix) is slice:
@@ -774,7 +778,10 @@ class IndexRowset(Rowset):
 
 	def append(self, row):
 		Rowset.append(self, row)
-		self._items[row[self._ki]] = row
+		if self.composite:
+			self._items[tuple([row[k] for k in self._ki])] = row
+		else:
+			self._items[row[self._ki]] = row
 
 	def __getstate__(self):
 		return (Rowset.__getstate__(self), self._items, self._ki)

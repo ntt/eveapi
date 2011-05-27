@@ -25,6 +25,10 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.1.6 - 27 May 2011
+# - Now supports composite keys for IndexRowsets.
+# - Fixed calls not working if a path was specified in the root url.
+#
 # Version: 1.1.5 - 27 Januari 2011
 # - Now supports (and defaults to) HTTPS. Non-SSL proxies will still work by
 #   explicitly specifying http:// in the url.

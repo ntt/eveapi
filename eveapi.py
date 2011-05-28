@@ -151,9 +151,10 @@ def EVEAPIConnection(url="api.eveonline.com", cacheHandler=None, proxy=None):
 	#          this object.
 	#
 
-
+	if not url.startswith("http"):
+		url = "https://" + url
 	p = urlparse.urlparse(url, "https")
-	if p.path[-1] == "/":
+	if p.path and p.path[-1] == "/":
 		p.path = p.path[:-1]
 	ctx = _RootContext(None, p.path, {}, {})
 	ctx._handler = cacheHandler
@@ -310,8 +311,6 @@ class _RootContext(_Context):
 					http.request("POST", 'https://'+self._host+path, urllib.urlencode(kw), {"Content-type": "application/x-www-form-urlencoded"})
 				else:
 					http.request("GET", 'https://'+self._host+path)
-
-			print self._host, path, kw
 
 			response = http.getresponse()
 			if response.status != 200:

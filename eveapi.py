@@ -25,8 +25,11 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.1.8 - 1 September 2011
+# - fix for inconsistent columns attribute in rowsets.
+#
 # Version: 1.1.7 - 1 September 2011
-# - auth() method updated to work with the new authentication scheme
+# - auth() method updated to work with the new authentication scheme.
 #
 # Version: 1.1.6 - 27 May 2011
 # - Now supports composite keys for IndexRowsets.
@@ -419,7 +422,7 @@ class _Parser(object):
 		if name == "rowset":
 			# for rowsets, use the given name
 			try:
-				columns = attributes[attributes.index('columns')+1].split(",")
+				columns = attributes[attributes.index('columns')+1].replace(" ", "").split(",")
 			except ValueError:
 				# rowset did not have columns tag set (this is a bug in API)
 				# columns will be extracted from first row instead.

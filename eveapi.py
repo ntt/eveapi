@@ -25,6 +25,10 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.1.9 - 2 September 2011
+# - added workaround for row tags with attributes that were not defined
+#   in their rowset (this should fix AssetList)
+#
 # Version: 1.1.8 - 1 September 2011
 # - fix for inconsistent columns attribute in rowsets.
 #
@@ -451,9 +455,15 @@ class _Parser(object):
 			self.root = this
 
 		if isinstance(self.container, Rowset) and (self.container.__catch == this._name):
-			# check for missing columns attribute (see above)
-			if not self.container._cols:
+			# <hack>
+			# - check for missing columns attribute (see above)
+			# - check for extra attributes that were not defined in the rowset,
+			#   such as rawQuantity in the assets lists.
+			# In either case the tag is assumed to be correct and the rowset's
+			# columns are overwritten with the tag's version.
+			if not self.container._cols or (len(attributes)/2 > len(self.container._cols)):
 				self.container._cols = attributes[0::2]
+			# </hack>
 
 			self.container.append([_autocast(attributes[i], attributes[i+1]) for i in xrange(0, len(attributes), 2)])
 			this._isrow = True

@@ -25,6 +25,9 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.1.7 - 1 September 2011
+# - auth() method updated to work with the new authentication scheme
+#
 # Version: 1.1.6 - 27 May 2011
 # - Now supports composite keys for IndexRowsets.
 # - Fixed calls not working if a path was specified in the root url.
@@ -132,7 +135,7 @@ def EVEAPIConnection(url="api.eveonline.com", cacheHandler=None, proxy=None):
 	#          Called when eveapi wants to fetch a document.
 	#          host is the address of the server, path is the full path to
 	#          the requested document, and params is a dict containing the
-	#          parameters passed to this api call (userID, apiKey etc).
+	#          parameters passed to this api call (keyID, vCode, etc).
 	#          The method MUST return one of the following types:
 	#
 	#           None - if your cache did not contain this entry
@@ -267,12 +270,10 @@ class _AuthContext(_Context):
 
 class _RootContext(_Context):
 
-	def auth(self, userID=None, apiKey=None):
-		# returns a copy of this object but for every call made through it, the
-		# userID and apiKey will be added to the API request.
-		if userID and apiKey:
-			return _AuthContext(self._root, self._path, self.parameters, {"userID":userID, "apiKey":apiKey})
-		raise ValueError("Must specify userID and apiKey")
+	def auth(self, **kw):
+		if len(kw) == 2 and (("keyID" in kw and "vCode" in kw) or ("userID" in kw and "apiKey" in kw)):
+			return _AuthContext(self._root, self._path, self.parameters, kw)
+		raise ValueError("Must specify keyID and vCode")
 
 	def setcachehandler(self, handler):
 		self._root._handler = handler

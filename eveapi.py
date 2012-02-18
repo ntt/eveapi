@@ -25,6 +25,10 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.2.0 - 18 February 2012
+# - fix handling of empty XML tags.
+# - improved proxy support a bit.
+#
 # Version: 1.1.9 - 2 September 2011
 # - added workaround for row tags with attributes that were not defined
 #   in their rowset (this should fix AssetList)
@@ -116,6 +120,7 @@ from time import strptime
 from calendar import timegm
 
 proxy = None
+proxySSL = False
 
 #-----------------------------------------------------------------------------
 
@@ -125,7 +130,7 @@ class Error(StandardError):
 		self.args = (message.rstrip("."),)
 
 
-def EVEAPIConnection(url="api.eveonline.com", cacheHandler=None, proxy=None):
+def EVEAPIConnection(url="api.eveonline.com", cacheHandler=None, proxy=None, proxySSL=False):
 	# Creates an API object through which you can call remote functions.
 	#
 	# The following optional arguments may be provided:
@@ -134,6 +139,8 @@ def EVEAPIConnection(url="api.eveonline.com", cacheHandler=None, proxy=None):
 	#
 	# proxy - (host,port) specifying a proxy server through which to request
 	#         the API pages. Specifying a proxy overrides default proxy.
+	#
+	# proxySSL - True if the proxy requires SSL, False otherwise.
 	#
 	# cacheHandler - an object which must support the following interface:
 	#
@@ -171,6 +178,7 @@ def EVEAPIConnection(url="api.eveonline.com", cacheHandler=None, proxy=None):
 	ctx._scheme = p.scheme
 	ctx._host = p.netloc
 	ctx._proxy = proxy or globals()["proxy"]
+	ctx._proxySSL = proxySSL or globals()["proxySSL"]
 	return ctx
 
 
@@ -302,25 +310,25 @@ class _RootContext(_Context):
 			response = None
 
 		if response is None:
-			if self._scheme == "https":
-				connectionclass = httplib.HTTPSConnection
-			else:
-				connectionclass = httplib.HTTPConnection
-
 			if self._proxy is None:
-				http = connectionclass(self._host)
-				if kw:
-					http.request("POST", path, urllib.urlencode(kw), {"Content-type": "application/x-www-form-urlencoded"})
+				req = path
+				if self._scheme == "https":
+					conn = httplib.HTTPSConnection(self._host)
 				else:
-					http.request("GET", path)
+					conn = httplib.HTTPConnection(self._host)
 			else:
-				http = connectionclass(*self._proxy)
-				if kw:
-					http.request("POST", 'https://'+self._host+path, urllib.urlencode(kw), {"Content-type": "application/x-www-form-urlencoded"})
+				req = self._scheme+'://'+self._host+path
+				if self._proxySSL:
+					conn = httplib.HTTPSConnection(*self._proxy)
 				else:
-					http.request("GET", 'https://'+self._host+path)
+					conn = httplib.HTTPConnection(*self._proxy)
 
-			response = http.getresponse()
+			if kw:
+				conn.request("POST", req, urllib.urlencode(kw), {"Content-type": "application/x-www-form-urlencoded"})
+			else:
+				conn.request("GET", req)
+
+			response = conn.getresponse()
 			if response.status != 200:
 				if response.status == httplib.NOT_FOUND:
 					raise AttributeError("'%s' not available on API server (404 Not Found)" % path)
@@ -473,10 +481,11 @@ class _Parser(object):
 			this._attributes = attributes
 			this._attributes2 = []
 	
-		self.container = this
-
+		self.container = self._last = this
+		self.has_cdata = False
 
 	def tag_cdata(self, data):
+		self.has_cdata = True
 		if self._cdata:
 			# unset cdata flag to indicate it's been handled.
 			self._cdata = False
@@ -510,6 +519,7 @@ class _Parser(object):
 
 	def tag_end(self, name):
 		this = self.container
+
 		if this is self.root:
 			del this._attributes
 			#this.__dict__.pop("_attributes", None)
@@ -545,8 +555,13 @@ class _Parser(object):
 			# really happen, but it doesn't hurt to handle this case!
 			sibling = getattr(self.container, this._name, None)
 			if sibling is None:
-				self.container._attributes2.append(this._name)
-				setattr(self.container, this._name, this)
+				if (not self.has_cdata) and self._last is this:
+					# tag of the form: <tag />, treat as empty string.
+					setattr(self.container, this._name, "")
+				else:
+					self.container._attributes2.append(this._name)
+					setattr(self.container, this._name, this)
+
 			# Note: there aren't supposed to be any NON-rowset tags containing
 			# multiples of some tag or attribute. Code below handles this case.
 			elif isinstance(sibling, Rowset):

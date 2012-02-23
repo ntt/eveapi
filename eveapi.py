@@ -25,6 +25,10 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.2.1 - 23 February 2012
+# - added workaround for row tags missing attributes that were defined
+#   in their rowset (this should fix ContractItems)
+#
 # Version: 1.2.0 - 18 February 2012
 # - fix handling of empty XML tags.
 # - improved proxy support a bit.
@@ -464,16 +468,34 @@ class _Parser(object):
 
 		if isinstance(self.container, Rowset) and (self.container.__catch == this._name):
 			# <hack>
-			# - check for missing columns attribute (see above)
+			# - check for missing columns attribute (see above).
+			# - check for missing row attributes.
 			# - check for extra attributes that were not defined in the rowset,
 			#   such as rawQuantity in the assets lists.
 			# In either case the tag is assumed to be correct and the rowset's
-			# columns are overwritten with the tag's version.
-			if not self.container._cols or (len(attributes)/2 > len(self.container._cols)):
-				self.container._cols = attributes[0::2]
+			# columns are overwritten with the tag's version, if required.
+			numAttr = len(attributes)/2
+			numCols = len(self.container._cols)
+			if numAttr < numCols:
+				# the row data is missing attributes that were defined in the rowset.
+				# missing attributes' values will be set to None.
+				fixed = []
+				row_idx = 0; hdr_idx = 0;
+				for col in self.container._cols:
+					if col == attributes[row_idx]:
+						fixed.append(_autocast(col, attributes[row_idx+1]))
+						row_idx += 2
+					else:
+						fixed.append(None)
+					hdr_idx += 1
+				self.container.append(fixed)
+			else:
+				if not self.container._cols or (numAttr > numCols):
+					# the row data contains more attributes than were defined.
+					self.container._cols = attributes[0::2]
+				self.container.append([_autocast(attributes[i], attributes[i+1]) for i in xrange(0, len(attributes), 2)])
 			# </hack>
 
-			self.container.append([_autocast(attributes[i], attributes[i+1]) for i in xrange(0, len(attributes), 2)])
 			this._isrow = True
 			this._attributes = this._attributes2 = None
 		else:

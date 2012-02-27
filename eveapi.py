@@ -25,6 +25,9 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.2.2 - 27 February 2012
+# - fix for the workaround in 1.2.1.
+#
 # Version: 1.2.1 - 23 February 2012
 # - added workaround for row tags missing attributes that were defined
 #   in their rowset (this should fix ContractItems)
@@ -476,11 +479,11 @@ class _Parser(object):
 			# columns are overwritten with the tag's version, if required.
 			numAttr = len(attributes)/2
 			numCols = len(self.container._cols)
-			if numAttr < numCols:
+			if numAttr < numCols and (attributes[-2] == self.container._cols[-1]):
 				# the row data is missing attributes that were defined in the rowset.
 				# missing attributes' values will be set to None.
 				fixed = []
-				row_idx = 0; hdr_idx = 0;
+				row_idx = 0; hdr_idx = 0; numAttr*=2
 				for col in self.container._cols:
 					if col == attributes[row_idx]:
 						fixed.append(_autocast(col, attributes[row_idx+1]))

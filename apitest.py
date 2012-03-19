@@ -15,8 +15,8 @@
 #
 #----------------------------------------------------------------------------
 # Put your userID and apiKey (full access) here before running this script.
-YOUR_USERID = 123456
-YOUR_APIKEY = "hPx6rxdYfVNeGcuOgPKRL-ohhithere-aUg6OfxCtMH4FUn5GUzf8YqIQDdc5gF7"
+YOUR_KEYID = 123456
+YOUR_VCODE = "nyanyanyanyanyanyanyanyanyanyanyanyanyanyanyanyanyanya:3"
 
 import time
 import tempfile
@@ -67,7 +67,7 @@ print
 # userID and apiKey on every call. If you are iterating over many accounts,
 # that may actually be the better option. However, for these examples we only
 # use one account, so this is more convenient.
-auth = api.auth(userID=YOUR_USERID, apiKey=YOUR_APIKEY)
+auth = api.auth(keyID=YOUR_KEYID, vCode=YOUR_VCODE)
 
 # Now let's say you want to the wallet balance of all your characters.
 # The API function we need to get the characters on your account is:
@@ -367,7 +367,7 @@ print
 # found in example 2). Note how we are chaining the various contexts here to
 # arrive directly at a character context. If you're not using any intermediate
 # contexts in the chain anyway, this is okay.
-me = cachedApi.auth(YOUR_USERID, YOUR_APIKEY).character(rich_charID)
+me = cachedApi.auth(keyID=YOUR_KEYID, vCode=YOUR_VCODE).character(rich_charID)
 
 # Now fetch the journal. Since this character context was created through 
 # the cachedApi object, it will still use the cachehandler from example 5.
@@ -398,7 +398,7 @@ print "You paid a %.2f ISK transaction tax since %s" %\
 
 
 # You might also want to see how much a certain item yielded you recently.
-typeName = "Expanded Cargohold II"
+typeName = "Expanded Cargohold II"  # change this to something you sold.
 amount = 0.0
 
 wallet = me.WalletTransactions()

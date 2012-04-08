@@ -25,6 +25,9 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.2.3 - 8 April 2012
+# - fix for tags of the form <tag attr=bla ... />
+#
 # Version: 1.2.2 - 27 February 2012
 # - fix for the workaround in 1.2.1.
 #
@@ -581,8 +584,15 @@ class _Parser(object):
 			sibling = getattr(self.container, this._name, None)
 			if sibling is None:
 				if (not self.has_cdata) and self._last is this:
-					# tag of the form: <tag />, treat as empty string.
-					setattr(self.container, this._name, "")
+					if attributes:
+						# tag of the form <tag attribute=bla ... />
+						e = Element()
+						setattr(self.container, this._name, e)
+						for i in xrange(0, len(attributes), 2):
+							setattr(e, attributes[0], attributes[1])
+					else:
+						# tag of the form: <tag />, treat as empty string.
+						setattr(self.container, this._name, "")
 				else:
 					self.container._attributes2.append(this._name)
 					setattr(self.container, this._name, this)

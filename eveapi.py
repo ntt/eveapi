@@ -25,7 +25,7 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
-# Version: 1.2.3 - 8 April 2012
+# Version: 1.2.3 - 10 April 2012
 # - fix for tags of the form <tag attr=bla ... />
 #
 # Version: 1.2.2 - 27 February 2012
@@ -583,7 +583,7 @@ class _Parser(object):
 			# really happen, but it doesn't hurt to handle this case!
 			sibling = getattr(self.container, this._name, None)
 			if sibling is None:
-				if (not self.has_cdata) and self._last is this:
+				if (not self.has_cdata) and (self._last is this) and (name != "rowset"):
 					if attributes:
 						# tag of the form <tag attribute=bla ... />
 						e = Element()

@@ -587,9 +587,10 @@ class _Parser(object):
 					if attributes:
 						# tag of the form <tag attribute=bla ... />
 						e = Element()
+						e._name = this._name
 						setattr(self.container, this._name, e)
 						for i in xrange(0, len(attributes), 2):
-							setattr(e, attributes[0], attributes[1])
+							setattr(e, attributes[i], attributes[i+1])
 					else:
 						# tag of the form: <tag />, treat as empty string.
 						setattr(self.container, this._name, "")

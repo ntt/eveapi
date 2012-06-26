@@ -25,6 +25,10 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.2.4 - 12 April 2012
+# - API version of XML response now available as _meta.version
+# - 
+
 # Version: 1.2.3 - 10 April 2012
 # - fix for tags of the form <tag attr=bla ... />
 #
@@ -358,7 +362,7 @@ class _RootContext(_Context):
 			# implementor is handling fallbacks...
 			try:
 				return _ParseXML(response, True, store and (lambda obj: cache.store(self._host, path, kw, response, obj)))
-			except Error, reason:
+			except Error, e:
 				response = retrieve_fallback(self._host, path, kw, reason=e)
 				if response is not None:
 					return response
@@ -469,6 +473,10 @@ class _Parser(object):
 			# We're at the root. The first tag has to be "eveapi" or we can't
 			# really assume the rest of the xml is going to be what we expect.
 			if name != "eveapi":
+				raise RuntimeError("Invalid API response")
+			try:
+				this.version = attributes[attributes.index("version")+1]
+			except KeyError:
 				raise RuntimeError("Invalid API response")
 			self.root = this
 

@@ -382,7 +382,7 @@ journal = me.WalletJournal()
 # to Rowsets of all rows with that key value in specified column.
 # These data structures are also quite efficient as the only extra data
 # created is the index and grouping.
-entriesByRefType = journal.entries.GroupedBy("refTypeID")
+entriesByRefType = journal.transactions.GroupedBy("refTypeID")
 
 # Also note that we're using a hardcoded refTypeID of 54 here. You're
 # supposed to use .eve.RefTypes() though (however they are not likely

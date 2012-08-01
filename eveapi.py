@@ -688,6 +688,8 @@ class Row(object):
 			return self._cols.index(this) < len(self._row)
 		return False
 
+	__contains__ = __hasattr__
+
 	def __getattr__(self, this):
 		try:
 			return self._row[self._cols.index(this)]

@@ -1,7 +1,7 @@
 #-----------------------------------------------------------------------------
 # eveapi - EVE Online API access
 #
-# Copyright (c)2007 Jamie "Entity" van den Berge <entity@vapor.com>
+# Copyright (c)2007-2012 Jamie "Entity" van den Berge <jamie@hlekkir.com>
 # 
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
@@ -25,10 +25,12 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.2.5 - 1 August 2012
+# - Row objects now have a __hasattr__ method.
+#
 # Version: 1.2.4 - 12 April 2012
 # - API version of XML response now available as _meta.version
-# - 
-
+#
 # Version: 1.2.3 - 10 April 2012
 # - fix for tags of the form <tag attr=bla ... />
 #
@@ -680,6 +682,11 @@ class Row(object):
 		if type(other) != type(self):
 			raise TypeError("Incompatible comparison type")
 		return cmp(self._cols, other._cols) or cmp(self._row, other._row)
+
+	def __hasattr__(self, this):
+		if this in self._cols:
+			return self._cols.index(this) < len(self._row)
+		return False
 
 	def __getattr__(self, this):
 		try:

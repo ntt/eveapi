@@ -26,7 +26,7 @@
 #
 #-----------------------------------------------------------------------------
 # Version: 1.2.5 - 1 August 2012
-# - Row objects now have a __hasattr__ method.
+# - Row objects now have __hasattr__ and __contains__ methods
 #
 # Version: 1.2.4 - 12 April 2012
 # - API version of XML response now available as _meta.version

@@ -143,6 +143,7 @@ proxy = None
 proxySSL = False
 
 #-----------------------------------------------------------------------------
+
 class Error(StandardError):
 	def __init__(self, code, message):
 		self.code = code
@@ -150,11 +151,13 @@ class Error(StandardError):
 	def __unicode__(self):
 		return u'%s [code=%s]' % (self.args[0], self.code)
 
-class BadRequestError(Error):
+class RequestError(Error):
 	pass
-class BadApiKeyError(Error):
+
+class AuthenticationError(Error):
 	pass
-class ServerSideError(Error):
+
+class ServerError(Error):
 	pass
 
 
@@ -231,12 +234,14 @@ def _ParseXML(response, fromContext, storeFunc):
 
 	error = getattr(obj, "error", False)
 	if error:
-		if error.code < 200:
-			raise BadRequestError(error.code, error.data)
-		elif error.code < 300:
-			raise BadApiKeyError(error.code, error.data)
+		if error.code >= 500:
+			raise ServerError(error.code, error.data)
+		elif error.code >= 200:
+			raise AuthenticationError(error.code, error.data)
+		elif error.code >= 100:
+			raise RequestError(error.code, error.data)
 		else:
-			raise ServerSideError(error.code, error.data)
+			raise Error(error.code, error.data)
 
 	result = getattr(obj, "result", False)
 	if not result:

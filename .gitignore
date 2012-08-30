@@ -1,1 +1,4 @@
 *.pyc
+*.pyo
+dist
+MANIFEST

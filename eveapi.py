@@ -25,6 +25,10 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.2.6 - 29 August 2012
+# - Added finer error handling + added setup.py to allow distributing eveapi
+#   through pypi.
+#
 # Version: 1.2.5 - 1 August 2012
 # - Row objects now have __hasattr__ and __contains__ methods
 #
@@ -139,11 +143,19 @@ proxy = None
 proxySSL = False
 
 #-----------------------------------------------------------------------------
-
 class Error(StandardError):
 	def __init__(self, code, message):
 		self.code = code
 		self.args = (message.rstrip("."),)
+	def __unicode__(self):
+		return u'%s [code=%s]' % (self.args[0], self.code)
+
+class BadRequestError(Error):
+	pass
+class BadApiKeyError(Error):
+	pass
+class ServerSideError(Error):
+	pass
 
 
 def EVEAPIConnection(url="api.eveonline.com", cacheHandler=None, proxy=None, proxySSL=False):
@@ -219,7 +231,12 @@ def _ParseXML(response, fromContext, storeFunc):
 
 	error = getattr(obj, "error", False)
 	if error:
-		raise Error(error.code, error.data)
+		if error.code < 200:
+			raise BadRequestError(error.code, error.data)
+		elif error.code < 300:
+			raise BadApiKeyError(error.code, error.data)
+		else:
+			raise ServerSideError(error.code, error.data)
 
 	result = getattr(obj, "result", False)
 	if not result:

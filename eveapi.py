@@ -716,7 +716,7 @@ class Row(object):
 	__contains__ = __hasattr__
 
 	def get(self, this, default=None):
-		if this in self._cols:
+		if (this in self._cols) and (self._cols.index(this) < len(self._row)):
 			return self._row[self._cols.index(this)]
 		return default
 

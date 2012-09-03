@@ -25,6 +25,9 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.2.7 - 3 September 2012
+# - Added get() method to Row object.
+#
 # Version: 1.2.6 - 29 August 2012
 # - Added finer error handling + added setup.py to allow distributing eveapi
 #   through pypi.
@@ -711,6 +714,11 @@ class Row(object):
 		return False
 
 	__contains__ = __hasattr__
+
+	def get(self, this, default=None):
+		if this in self._cols:
+			return self._row[self._cols.index(this)]
+		return default
 
 	def __getattr__(self, this):
 		try:

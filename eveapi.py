@@ -25,6 +25,10 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.2.8 - 9 August 2013
+# - the XML value cast function (_autocast) can now be changed globally to a
+#   custom one using the set_cast_func(func) module-level function.
+#
 # Version: 1.2.7 - 3 September 2012
 # - Added get() method to Row object.
 #
@@ -146,6 +150,16 @@ proxy = None
 proxySSL = False
 
 #-----------------------------------------------------------------------------
+
+def set_cast_func(func):
+	"""Sets an alternative value casting function for the XML parser.
+	The function must have 2 arguments; key and value. It should return a
+	value or object of the type appropriate for the given attribute name/key.
+	func may be None and will cause the default _autocast function to be used.
+	"""
+	global _castfunc
+	_castfunc = _autocast if func is None else func
+
 
 class Error(StandardError):
 	def __init__(self, code, message):
@@ -374,7 +388,7 @@ class _RootContext(_Context):
 				if response.status == httplib.NOT_FOUND:
 					raise AttributeError("'%s' not available on API server (404 Not Found)" % path)
 				else:
-					raise RuntimeError("'%s' request failed (%d %s)" % (path, response.status, response.reason))
+					raise ServerError(response.status, "'%s' request failed (%s)" % (path, response.reason))
 
 			if cache:
 				store = True
@@ -427,6 +441,7 @@ def _autocast(key, value):
 	# couldn't cast. return string unchanged.
 	return value
 
+_castfunc = _autocast
 
 
 class _Parser(object):
@@ -524,7 +539,7 @@ class _Parser(object):
 				row_idx = 0; hdr_idx = 0; numAttr*=2
 				for col in self.container._cols:
 					if col == attributes[row_idx]:
-						fixed.append(_autocast(col, attributes[row_idx+1]))
+						fixed.append(_castfunc(col, attributes[row_idx+1]))
 						row_idx += 2
 					else:
 						fixed.append(None)
@@ -534,7 +549,7 @@ class _Parser(object):
 				if not self.container._cols or (numAttr > numCols):
 					# the row data contains more attributes than were defined.
 					self.container._cols = attributes[0::2]
-				self.container.append([_autocast(attributes[i], attributes[i+1]) for i in xrange(0, len(attributes), 2)])
+				self.container.append([_castfunc(attributes[i], attributes[i+1]) for i in xrange(0, len(attributes), 2)])
 			# </hack>
 
 			this._isrow = True
@@ -557,7 +572,7 @@ class _Parser(object):
 				return
 
 		this = self.container
-		data = _autocast(this._name, data)
+		data = _castfunc(this._name, data)
 
 		if this._isrow:
 			# sigh. anonymous data inside rows makes Entity cry.
@@ -637,7 +652,7 @@ class _Parser(object):
 			# multiples of some tag or attribute. Code below handles this case.
 			elif isinstance(sibling, Rowset):
 				# its doppelganger is a rowset, append this as a row to that.
-				row = [_autocast(attributes[i], attributes[i+1]) for i in xrange(0, len(attributes), 2)]
+				row = [_castfunc(attributes[i], attributes[i+1]) for i in xrange(0, len(attributes), 2)]
 				row.extend([getattr(this, col) for col in attributes2])
 				sibling.append(row)
 			elif isinstance(sibling, Element):
@@ -646,7 +661,7 @@ class _Parser(object):
 				# into a Rowset, adding the sibling element and this one.
 				rs = Rowset()
 				rs.__catch = rs._name = this._name
-				row = [_autocast(attributes[i], attributes[i+1]) for i in xrange(0, len(attributes), 2)]+[getattr(this, col) for col in attributes2]
+				row = [_castfunc(attributes[i], attributes[i+1]) for i in xrange(0, len(attributes), 2)]+[getattr(this, col) for col in attributes2]
 				rs.append(row)
 				row = [getattr(sibling, attributes[i]) for i in xrange(0, len(attributes), 2)]+[getattr(sibling, col) for col in attributes2]
 				rs.append(row)
@@ -659,7 +674,7 @@ class _Parser(object):
 
 		# Now fix up the attributes and be done with it.
 		for i in xrange(0, len(attributes), 2):
-			this.__dict__[attributes[i]] = _autocast(attributes[i], attributes[i+1])
+			this.__dict__[attributes[i]] = _castfunc(attributes[i], attributes[i+1])
 
 		return
 

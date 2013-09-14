@@ -1,8 +1,8 @@
 #-----------------------------------------------------------------------------
 # eveapi - EVE Online API access
 #
-# Copyright (c)2007-2012 Jamie "Entity" van den Berge <jamie@hlekkir.com>
-# 
+# Copyright (c)2007-2013 Jamie "Entity" van den Berge <jamie@hlekkir.com>
+#
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
 # files (the "Software"), to deal in the Software without
@@ -25,6 +25,10 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.2.9 - 14 September 2013
+# - Updated error handling: Raise an AuthenticationError in case
+#	the API returns HTTP Status Code 403 - Forbidden
+#
 # Version: 1.2.8 - 9 August 2013
 # - the XML value cast function (_autocast) can now be changed globally to a
 #   custom one using the set_cast_func(func) module-level function.
@@ -387,6 +391,8 @@ class _RootContext(_Context):
 			if response.status != 200:
 				if response.status == httplib.NOT_FOUND:
 					raise AttributeError("'%s' not available on API server (404 Not Found)" % path)
+				elif response.status == httplib.FORBIDDEN:
+					raise AuthenticationError(response.status, 'HTTP 403 - Forbidden')
 				else:
 					raise ServerError(response.status, "'%s' request failed (%s)" % (path, response.reason))
 

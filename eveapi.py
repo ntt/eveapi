@@ -25,6 +25,11 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+# Version: 1.3.0 - 27 May 2014
+# - Added set_user_agent() module-level function to set the User-Agent header
+#   to be used for any requests by the library. If this function is not used,
+#   a warning will be thrown for every API request.
+#
 # Version: 1.2.8 - 9 August 2013
 # - the XML value cast function (_autocast) can now be changed globally to a
 #   custom one using the set_cast_func(func) module-level function.
@@ -141,6 +146,7 @@ import httplib
 import urlparse
 import urllib
 import copy
+import warnings
 
 from xml.parsers import expat
 from time import strptime
@@ -148,6 +154,9 @@ from calendar import timegm
 
 proxy = None
 proxySSL = False
+
+_default_useragent = "eveapi.py/1.3"
+_useragent = None  # use set_user_agent() to set this.
 
 #-----------------------------------------------------------------------------
 
@@ -159,6 +168,11 @@ def set_cast_func(func):
 	"""
 	global _castfunc
 	_castfunc = _autocast if func is None else func
+
+def set_user_agent(user_agent_string):
+	"""Sets a User-Agent for any requests sent by the library."""
+	global _useragent
+	_useragent = user_agent_string
 
 
 class Error(StandardError):
@@ -365,6 +379,9 @@ class _RootContext(_Context):
 			response = None
 
 		if response is None:
+			if not _useragent:
+				warnings.warn("No User-Agent set! Please use the set_user_agent() module-level function before accessing the EVE API.", stacklevel=3)
+
 			if self._proxy is None:
 				req = path
 				if self._scheme == "https":
@@ -379,9 +396,9 @@ class _RootContext(_Context):
 					conn = httplib.HTTPConnection(*self._proxy)
 
 			if kw:
-				conn.request("POST", req, urllib.urlencode(kw), {"Content-type": "application/x-www-form-urlencoded"})
+				conn.request("POST", req, urllib.urlencode(kw), {"Content-type": "application/x-www-form-urlencoded", "User-Agent": _useragent or _default_useragent})
 			else:
-				conn.request("GET", req)
+				conn.request("GET", req, "", {"User-Agent": _useragent or _default_useragent})
 
 			response = conn.getresponse()
 			if response.status != 200:

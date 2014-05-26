@@ -12,7 +12,9 @@ from distutils.core import setup
 setup(
     # GENERAL INFO
     name = 'eveapi',
+
     version = '1.3',
+
     description = 'Python library for accessing the EVE Online API.',
     author = 'Jamie van den Berge',
     author_email = 'jamie@hlekkir.com',

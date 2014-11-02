@@ -26,6 +26,10 @@
 #
 #-----------------------------------------------------------------------------
 #
+# Version: 1.3.1 - 02 November 2014
+# - Fix problem with strings ending in spaces (this is not supposed to happen,
+#   but apparently tiancity thinks it is ok to bypass constraints)
+#
 # Version: 1.3.0 - 27 May 2014
 # - Added set_user_agent() module-level function to set the User-Agent header
 #   to be used for any requests by the library. If this function is not used,
@@ -592,7 +596,7 @@ class _Parser(object):
 			# unset cdata flag to indicate it's been handled.
 			self._cdata = False
 		else:
-			if data in ("\r\n", "\n") or data.strip() != data:
+			if data in ("\r\n", "\n") or data.lstrip() != data:
 				return
 
 		this = self.container

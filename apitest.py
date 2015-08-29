@@ -3,7 +3,7 @@
 #=============================================================================
 #
 # This file is in the Public Domain - Do with it as you please.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 # OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -14,27 +14,40 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #----------------------------------------------------------------------------
+# Dev docs:
+# https://eveonline-third-party-documentation.readthedocs.org/en/latest/reference/guidelines/
+
+# Python 2/3 compatibility http://python-future.org/
+from __future__ import print_function
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
+
+import time
+import tempfile
+import pickle
+import zlib
+import os
+from os.path import join, exists
+
+import eveapi
+
 # Put your userID and apiKey (full access) here before running this script.
 YOUR_KEYID = 123456
 YOUR_VCODE = "nyanyanyanyanyanyanyanyanyanyanyanyanyanyanyanyanyanya:3"
 
-import time
-import tempfile
-import cPickle
-import zlib
-import os
-from os.path import join, exists
-from httplib import HTTPException
-
-import eveapi
+# Provide a good User-Agent header
+eveapi.set_user_agent("eveapi.py/1.3")
 
 api = eveapi.EVEAPIConnection()
 
 #----------------------------------------------------------------------------
-print
-print "EXAMPLE 1: GETTING THE ALLIANCE LIST"
-print " (and showing alliances with 1000 or more members)"
-print
+print()
+print("EXAMPLE 1: GETTING THE ALLIANCE LIST")
+print(" (and showing alliances with 1000 or more members)")
+print()
 
 # Let's get the list of alliances.
 # The API function we need to get the list is:
@@ -51,14 +64,14 @@ result1 = api.eve.AllianceList()
 # members:
 for alliance in result1.alliances:
 	if alliance.memberCount >= 1000:
-		print "%s <%s> has %d members" %\
-			(alliance.name, alliance.shortName, alliance.memberCount)
+		print("%s <%s> has %d members" %\
+			(alliance.name, alliance.shortName, alliance.memberCount))
 
 
 #-----------------------------------------------------------------------------
-print
-print "EXAMPLE 2: GETTING WALLET BALANCE OF ALL YOUR CHARACTERS"
-print
+print()
+print("EXAMPLE 2: GETTING WALLET BALANCE OF ALL YOUR CHARACTERS")
+print()
 
 # To get any info on character/corporation related stuff, we need to acquire
 # an authentication context. All API requests that require authentication need
@@ -87,7 +100,7 @@ rich_charID = 0
 for character in result2.characters:
 	wallet = auth.char.AccountBalance(characterID=character.characterID)
 	isk = wallet.accounts[0].balance
-	print character.name, "has", isk, "ISK."
+	print(character.name, "has", isk, "ISK.")
 
 	if isk > rich:
 		rich = isk
@@ -96,9 +109,9 @@ for character in result2.characters:
 
 
 #-----------------------------------------------------------------------------
-print
-print "EXAMPLE 3: WHEN STUFF GOES WRONG"
-print
+print()
+print("EXAMPLE 3: WHEN STUFF GOES WRONG")
+print()
 
 # Obviously you cannot assume an API call to succeed. There's a myriad of
 # things that can go wrong:
@@ -120,19 +133,19 @@ print
 try:
 	# Try calling account/Characters without authentication context
 	api.account.Characters()
-except eveapi.Error, e:
-	print "Oops! eveapi returned the following error:"
-	print "code:", e.code
-	print "message:", e.message
-except Exception, e:
-	print "Something went horribly wrong:", str(e)
+except eveapi.Error as e:
+	print("Oops! eveapi returned the following error:")
+	print("code:", e.code)
+	print("message:", e.message)
+except Exception as e:
+	print("Something went horribly wrong:", str(e))
 	raise
 
 
 #-----------------------------------------------------------------------------
-print
-print "EXAMPLE 4: GETTING CHARACTER SHEET INFORMATION"
-print
+print()
+print("EXAMPLE 4: GETTING CHARACTER SHEET INFORMATION")
+print()
 
 # We grab ourselves a character context object.
 # Note that this is a convenience function that takes care of passing the
@@ -184,25 +197,25 @@ for g in skilltree.skillGroups:
 
 			# print the group name if we haven't done so already
 			if not skills_trained_in_this_group:
-				print g.groupName
+				print(g.groupName)
 				skills_trained_in_this_group = True
 
 			# and display some info about the skill!
-			print "- %s Rank(%d) - SP: %d/%d - Level: %d" %\
-				(skill.typeName, skill.rank, trained.skillpoints, (skill.rank * sp[trained.level]), trained.level)
+			print("- %s Rank(%d) - SP: %d/%d - Level: %d" %\
+				(skill.typeName, skill.rank, trained.skillpoints, (skill.rank * sp[trained.level]), trained.level))
 			total_skills += 1
 			total_sp += trained.skillpoints
 
 
 # And to top it off, display totals.
-print "You currently have %d skills and %d skill points" % (total_skills, total_sp)
+print("You currently have %d skills and %d skill points" % (total_skills, total_sp))
 
 
 
 #-----------------------------------------------------------------------------
-print
-print "EXAMPLE 5: USING ROWSETS"
-print
+print()
+print("EXAMPLE 5: USING ROWSETS")
+print()
 
 # For this one we will use the result1 that contains the alliance list from
 # the first example.
@@ -217,13 +230,13 @@ rowset.SortBy("shortName")
 # Note the use of Select() here. The Select method speeds up iterating over
 # large rowsets considerably as no temporary row instances are created.
 for ticker in rowset.Select("shortName"):
-	print ticker,
-print
+	print(ticker, end=' ')
+print()
 
 # The sort above modified the result inplace. There is another method, called
-# SortedBy, which returns a new rowset. 
-
-print
+# SortedBy, which returns a new rowset.
+print(rowset.SortedBy("allianceID", reverse=True, dtype=int))
+print()
 
 # Another useful method of rowsets is IndexBy, which enables you to do direct
 # key lookups on columns. We already used this feature in example 3. Indeed
@@ -240,30 +253,30 @@ alliances_by_ticker = rowset.IndexedBy("shortName")
 # Assumes ISD alliance exists. If it doesn't, we probably have bigger
 # problems than the unhandled exception here -_-
 try:
-	print alliances_by_ticker.Get("ISD")
+	print(alliances_by_ticker.Get("ISD"))
 except :
-	print "Blimey! CCP let the ISD alliance expire -AGAIN-. How inconvenient!"
+	print("Blimey! CCP let the ISD alliance expire -AGAIN-. How inconvenient!")
 
 # You may specify a default to return in case the row wasn't found:
-print alliances_by_ticker.Get("123456", 42)
+print(alliances_by_ticker.Get("123456", 42))
 
 # If no default was specified and you try to look up a key that does not
 # exist, an appropriate exception will be raised:
 try:
-	print alliances_by_ticker.Get("123456")
+	print(alliances_by_ticker.Get("123456"))
 except KeyError:
-	print "This concludes example 5"
+	print("This concludes example 5")
 
 
 
 #-----------------------------------------------------------------------------
-print
-print "EXAMPLE 6: CACHING DATA"
-print
+print()
+print("EXAMPLE 6: CACHING DATA")
+print()
 
 # For some calls you will want caching. To facilitate this, a customized
 # cache handler can be attached. Below is an example of a simple cache
-# handler. 
+# handler.
 
 class MyCacheHandler(object):
 	# Note: this is an example handler to demonstrate how to use them.
@@ -280,11 +293,11 @@ class MyCacheHandler(object):
 
 	def log(self, what):
 		if self.debug:
-			print "[%d] %s" % (self.count, what)
+			print("[%d] %s" % (self.count, what))
 
 	def retrieve(self, host, path, params):
 		# eveapi asks if we have this request cached
-		key = hash((host, path, frozenset(params.items())))
+		key = hash((host, path, frozenset(list(params.items()))))
 
 		self.count += 1  # for logging
 
@@ -299,7 +312,7 @@ class MyCacheHandler(object):
 			if exists(cacheFile):
 				self.log("%s: retrieving from disk" % path)
 				f = open(cacheFile, "rb")
-				cached = self.cache[key] = cPickle.loads(zlib.decompress(f.read()))
+				cached = self.cache[key] = pickle.loads(zlib.decompress(f.read()))
 				f.close()
 
 		if cached:
@@ -321,7 +334,7 @@ class MyCacheHandler(object):
 
 	def store(self, host, path, params, doc, obj):
 		# eveapi is asking us to cache an item
-		key = hash((host, path, frozenset(params.items())))
+		key = hash((host, path, frozenset(list(params.items()))))
 
 		cachedFor = obj.cachedUntil - obj.currentTime
 		if cachedFor:
@@ -335,7 +348,7 @@ class MyCacheHandler(object):
 			# store in cache folder
 			cacheFile = join(self.tempdir, str(key) + ".cache")
 			f = open(cacheFile, "wb")
-			f.write(zlib.compress(cPickle.dumps(cached, -1)))
+			f.write(zlib.compress(pickle.dumps(cached, -1)))
 			f.close()
 
 
@@ -355,10 +368,10 @@ result = cachedApi.eve.SkillTree()
 
 
 #-----------------------------------------------------------------------------
-print
-print "EXAMPLE 7: TRANSACTION DATA"
-print "(and doing more nifty stuff with rowsets)"
-print
+print()
+print("EXAMPLE 7: TRANSACTION DATA")
+print("(and doing more nifty stuff with rowsets)")
+print()
 
 # okay since we have a caching api object now it is fairly safe to do this
 # example repeatedly without server locking you out for an hour every time!
@@ -369,7 +382,7 @@ print
 # contexts in the chain anyway, this is okay.
 me = cachedApi.auth(keyID=YOUR_KEYID, vCode=YOUR_VCODE).character(rich_charID)
 
-# Now fetch the journal. Since this character context was created through 
+# Now fetch the journal. Since this character context was created through
 # the cachedApi object, it will still use the cachehandler from example 5.
 journal = me.WalletJournal()
 
@@ -393,8 +406,8 @@ date = 0
 for taxAmount, date in entriesByRefType[54].Select("amount", "date"):
 	amount += -taxAmount
 
-print "You paid a %.2f ISK transaction tax since %s" %\
-	(amount, time.asctime(time.gmtime(date)))
+print("You paid a %.2f ISK transaction tax since %s" %\
+	(amount, time.asctime(time.gmtime(date))))
 
 
 # You might also want to see how much a certain item yielded you recently.
@@ -406,11 +419,10 @@ soldTx = wallet.transactions.GroupedBy("transactionType")["sell"]
 for row in soldTx.GroupedBy("typeName")[typeName]:
 	amount += (row.quantity * row.price)
 
-print "%s sales yielded %.2f ISK since %s" %\
-	(typeName, amount, time.asctime(time.gmtime(row.transactionDateTime)))
+print("%s sales yielded %.2f ISK since %s" %\
+	(typeName, amount, time.asctime(time.gmtime(row.transactionDateTime))))
 
 # I'll leave walking the transaction pages as an excercise to the reader ;)
 # Please also see the eveapi module itself for more documentation.
 
 # That's all folks!
-

@@ -11,7 +11,7 @@
 # copies of the Software, and to permit persons to whom the
 # Software is furnished to do so, subject to the following
 # conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 #
@@ -25,6 +25,9 @@
 # OTHER DEALINGS IN THE SOFTWARE
 #
 #-----------------------------------------------------------------------------
+#
+# Version: 1.3.2 - 29 August 2015
+# - Added Python 3 support
 #
 # Version: 1.3.1 - 02 November 2014
 # - Fix problem with strings ending in spaces (this is not supposed to happen,
@@ -147,13 +150,24 @@
 # - Initial release
 #
 # Requirements:
-#   Python 2.4+
+#   Python 2.6+ or Python 3.3+
 #
 #-----------------------------------------------------------------------------
+from __future__ import division
+from past.builtins import cmp
+from future import standard_library
+standard_library.install_aliases()
+from past.builtins import basestring
+from builtins import map
+from builtins import zip
+from builtins import range
+from builtins import object
 
-import httplib
-import urlparse
-import urllib
+import http.client
+from urllib.parse import urlparse, urlencode
+# from urllib.request import urlopen, Request
+# from urllib.error import HTTPError
+
 import copy
 import warnings
 
@@ -161,11 +175,12 @@ from xml.parsers import expat
 from time import strptime
 from calendar import timegm
 
+__version__ = "1.3.2"
+_default_useragent = "eveapi.py/{}".format(__version__)
+_useragent = None  # use set_user_agent() to set this.
+
 proxy = None
 proxySSL = False
-
-_default_useragent = "eveapi.py/1.3"
-_useragent = None  # use set_user_agent() to set this.
 
 #-----------------------------------------------------------------------------
 
@@ -184,12 +199,12 @@ def set_user_agent(user_agent_string):
 	_useragent = user_agent_string
 
 
-class Error(StandardError):
+class Error(Exception):
 	def __init__(self, code, message):
 		self.code = code
-		self.args = (message.rstrip("."),)
-	def __unicode__(self):
-		return u'%s [code=%s]' % (self.args[0], self.code)
+		self.message = message
+	def __str__(self):
+		return u'%s [code=%s]' % (self.message, self.code)
 
 class RequestError(Error):
 	pass
@@ -241,7 +256,7 @@ def EVEAPIConnection(url="api.eveonline.com", cacheHandler=None, proxy=None, pro
 
 	if not url.startswith("http"):
 		url = "https://" + url
-	p = urlparse.urlparse(url, "https")
+	p = urlparse(url, "https")
 	if p.path and p.path[-1] == "/":
 		p.path = p.path[:-1]
 	ctx = _RootContext(None, p.path, {}, {})
@@ -262,10 +277,9 @@ def ParseXML(file_or_string):
 
 def _ParseXML(response, fromContext, storeFunc):
 	# pre/post-process XML or Element data
-
 	if fromContext and isinstance(response, Element):
 		obj = response
-	elif type(response) in (str, unicode):
+	elif isinstance(response, basestring):
 		obj = _Parser().Parse(response, False)
 	elif hasattr(response, "read"):
 		obj = _Parser().Parse(response, True)
@@ -297,7 +311,7 @@ def _ParseXML(response, fromContext, storeFunc):
 	return result
 
 
-	
+
 
 
 #-----------------------------------------------------------------------------
@@ -337,7 +351,7 @@ class _Context(object):
 	def __call__(self, **kw):
 		if kw:
 			# specified keywords override contextual ones
-			for k, v in self.parameters.iteritems():
+			for k, v in self.parameters.items():
 				if k not in kw:
 					kw[k] = v
 		else:
@@ -371,9 +385,12 @@ class _RootContext(_Context):
 	def setcachehandler(self, handler):
 		self._root._handler = handler
 
+	def __bool__(self):
+		return True
+
 	def __call__(self, path, **kw):
 		# convert list type arguments to something the API likes
-		for k, v in kw.iteritems():
+		for k, v in kw.items():
 			if isinstance(v, _listtypes):
 				kw[k] = ','.join(map(str, list(v)))
 
@@ -394,26 +411,26 @@ class _RootContext(_Context):
 			if self._proxy is None:
 				req = path
 				if self._scheme == "https":
-					conn = httplib.HTTPSConnection(self._host)
+					conn = http.client.HTTPSConnection(self._host)
 				else:
-					conn = httplib.HTTPConnection(self._host)
+					conn = http.client.HTTPConnection(self._host)
 			else:
 				req = self._scheme+'://'+self._host+path
 				if self._proxySSL:
-					conn = httplib.HTTPSConnection(*self._proxy)
+					conn = http.client.HTTPSConnection(*self._proxy)
 				else:
-					conn = httplib.HTTPConnection(*self._proxy)
+					conn = http.client.HTTPConnection(*self._proxy)
 
 			if kw:
-				conn.request("POST", req, urllib.urlencode(kw), {"Content-type": "application/x-www-form-urlencoded", "User-Agent": _useragent or _default_useragent})
+				conn.request("POST", req, urlencode(kw), {"Content-type": "application/x-www-form-urlencoded", "User-Agent": _useragent or _default_useragent})
 			else:
 				conn.request("GET", req, "", {"User-Agent": _useragent or _default_useragent})
 
 			response = conn.getresponse()
 			if response.status != 200:
-				if response.status == httplib.NOT_FOUND:
+				if response.status == http.client.NOT_FOUND:
 					raise AttributeError("'%s' not available on API server (404 Not Found)" % path)
-				elif response.status == httplib.FORBIDDEN:
+				elif response.status == http.client.FORBIDDEN:
 					raise AuthenticationError(response.status, 'HTTP 403 - Forbidden')
 				else:
 					raise ServerError(response.status, "'%s' request failed (%s)" % (path, response.reason))
@@ -431,7 +448,7 @@ class _RootContext(_Context):
 			# implementor is handling fallbacks...
 			try:
 				return _ParseXML(response, True, store and (lambda obj: cache.store(self._host, path, kw, response, obj)))
-			except Error, e:
+			except Error as e:
 				response = retrieve_fallback(self._host, path, kw, reason=e)
 				if response is not None:
 					return response
@@ -558,7 +575,7 @@ class _Parser(object):
 			#   such as rawQuantity in the assets lists.
 			# In either case the tag is assumed to be correct and the rowset's
 			# columns are overwritten with the tag's version, if required.
-			numAttr = len(attributes)/2
+			numAttr = len(attributes) / 2
 			numCols = len(self.container._cols)
 			if numAttr < numCols and (attributes[-2] == self.container._cols[-1]):
 				# the row data is missing attributes that were defined in the rowset.
@@ -577,7 +594,7 @@ class _Parser(object):
 				if not self.container._cols or (numAttr > numCols):
 					# the row data contains more attributes than were defined.
 					self.container._cols = attributes[0::2]
-				self.container.append([_castfunc(attributes[i], attributes[i+1]) for i in xrange(0, len(attributes), 2)])
+				self.container.append([_castfunc(attributes[i], attributes[i+1]) for i in range(0, len(attributes), 2)])
 			# </hack>
 
 			this._isrow = True
@@ -586,7 +603,7 @@ class _Parser(object):
 			this._isrow = False
 			this._attributes = attributes
 			this._attributes2 = []
-	
+
 		self.container = self._last = this
 		self.has_cdata = False
 
@@ -667,7 +684,7 @@ class _Parser(object):
 						e = Element()
 						e._name = this._name
 						setattr(self.container, this._name, e)
-						for i in xrange(0, len(attributes), 2):
+						for i in range(0, len(attributes), 2):
 							setattr(e, attributes[i], attributes[i+1])
 					else:
 						# tag of the form: <tag />, treat as empty string.
@@ -680,7 +697,7 @@ class _Parser(object):
 			# multiples of some tag or attribute. Code below handles this case.
 			elif isinstance(sibling, Rowset):
 				# its doppelganger is a rowset, append this as a row to that.
-				row = [_castfunc(attributes[i], attributes[i+1]) for i in xrange(0, len(attributes), 2)]
+				row = [_castfunc(attributes[i], attributes[i+1]) for i in range(0, len(attributes), 2)]
 				row.extend([getattr(this, col) for col in attributes2])
 				sibling.append(row)
 			elif isinstance(sibling, Element):
@@ -689,11 +706,11 @@ class _Parser(object):
 				# into a Rowset, adding the sibling element and this one.
 				rs = Rowset()
 				rs.__catch = rs._name = this._name
-				row = [_castfunc(attributes[i], attributes[i+1]) for i in xrange(0, len(attributes), 2)]+[getattr(this, col) for col in attributes2]
+				row = [_castfunc(attributes[i], attributes[i+1]) for i in range(0, len(attributes), 2)]+[getattr(this, col) for col in attributes2]
 				rs.append(row)
-				row = [getattr(sibling, attributes[i]) for i in xrange(0, len(attributes), 2)]+[getattr(sibling, col) for col in attributes2]
+				row = [getattr(sibling, attributes[i]) for i in range(0, len(attributes), 2)]+[getattr(sibling, col) for col in attributes2]
 				rs.append(row)
-				rs._cols = [attributes[i] for i in xrange(0, len(attributes), 2)]+[col for col in attributes2]
+				rs._cols = [attributes[i] for i in range(0, len(attributes), 2)]+[col for col in attributes2]
 				setattr(self.container, this._name, rs)
 			else:
 				# something else must have set this attribute already.
@@ -701,7 +718,7 @@ class _Parser(object):
 				pass
 
 		# Now fix up the attributes and be done with it.
-		for i in xrange(0, len(attributes), 2):
+		for i in range(0, len(attributes), 2):
 			this.__dict__[attributes[i]] = _castfunc(attributes[i], attributes[i+1])
 
 		return
@@ -732,12 +749,12 @@ class Row(object):
 	#
 	# To conserve resources, Row objects are only created on-demand. This is
 	# typically done by Rowsets (e.g. when iterating over the rowset).
-	
+
 	def __init__(self, cols=None, row=None):
 		self._cols = cols or []
 		self._row = row or []
 
-	def __nonzero__(self):
+	def __bool__(self):
 		return True
 
 	def __ne__(self, other):
@@ -767,13 +784,13 @@ class Row(object):
 		try:
 			return self._row[self._cols.index(this)]
 		except:
-			raise AttributeError, this
+			raise AttributeError(this)
 
 	def __getitem__(self, this):
 		return self._row[self._cols.index(this)]
 
 	def __str__(self):
-		return "Row(" + ','.join(map(_fmt, zip(self._cols, self._row))) + ")"
+		return "Row(" + ','.join(map(_fmt, list(zip(self._cols, self._row)))) + ")"
 
 
 class Rowset(object):
@@ -782,7 +799,7 @@ class Rowset(object):
 	# Rowsets support most of the list interface:
 	#   iteration, indexing and slicing
 	#
-	# As well as the following methods: 
+	# As well as the following methods:
 	#
 	#   IndexedBy(column)
 	#     Returns an IndexRowset keyed on given column. Requires the column to
@@ -813,13 +830,13 @@ class Rowset(object):
 	def GroupedBy(self, column):
 		return FilterRowset(self._cols, self._rows, column)
 
-	def SortBy(self, column, reverse=False):
+	def SortBy(self, column, reverse=False, dtype=str):
 		ix = self._cols.index(column)
-		self.sort(key=lambda e: e[ix], reverse=reverse)
+		self.sort(key=lambda e: dtype(e[ix]), reverse=reverse)
 
-	def SortedBy(self, column, reverse=False):
+	def SortedBy(self, column, reverse=False, dtype=str):
 		rs = self[:]
-		rs.SortBy(column, reverse)
+		rs.SortBy(column, reverse, dtype)
 		return rs
 
 	def Select(self, *columns, **options):
@@ -832,7 +849,7 @@ class Rowset(object):
 				for line in self._rows:
 					yield line[i]
 		else:
-			i = map(self._cols.index, columns)
+			i = list(map(self._cols.index, columns))
 			if options.get("row", False):
 				for line in self._rows:
 					yield line, [line[x] for x in i]
@@ -861,8 +878,8 @@ class Rowset(object):
 				self._rows += other._rows
 		raise TypeError("rowset instance expected")
 
-	def __nonzero__(self):
-		return not not self._rows
+	def __bool__(self):
+		return True if self._rows else False
 
 	def __len__(self):
 		return len(self._rows)
@@ -905,7 +922,7 @@ class IndexRowset(Rowset):
 		if row is None:
 			if default:
 				return default[0]
-			raise KeyError, key
+			raise KeyError(key)
 		return Row(self._cols, row)
 
 	# -------------
@@ -987,9 +1004,7 @@ class FilterRowset(object):
 	def _bind(self):
 		items = self._items
 		self.keys = items.keys
-		self.iterkeys = items.iterkeys
 		self.__contains__ = items.__contains__
-		self.has_key = items.has_key
 		self.__len__ = items.__len__
 		self.__iter__ = items.__iter__
 
@@ -1015,4 +1030,3 @@ class FilterRowset(object):
 	def __setstate__(self, state):
 		self._cols, self._rows, self._items, self.key, self.key2 = state
 		self._bind()
-

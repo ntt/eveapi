@@ -1,6 +1,6 @@
-#=============================================================================
+# =============================================================================
 # eveapi module demonstration script - Jamie van den Berge
-#=============================================================================
+# =============================================================================
 #
 # This file is in the Public Domain - Do with it as you please.
 #
@@ -13,7 +13,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE
 #
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 # Dev docs:
 # https://eveonline-third-party-documentation.readthedocs.org/en/latest/reference/guidelines/
 
@@ -43,7 +43,8 @@ eveapi.set_user_agent("eveapi.py/1.3")
 
 api = eveapi.EVEAPIConnection()
 
-#----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
 print()
 print("EXAMPLE 1: GETTING THE ALLIANCE LIST")
 print(" (and showing alliances with 1000 or more members)")
@@ -63,12 +64,12 @@ result1 = api.eve.AllianceList()
 # we'll just iterate over it and display all alliances with more than 1000
 # members:
 for alliance in result1.alliances:
-	if alliance.memberCount >= 1000:
-		print("%s <%s> has %d members" %\
-			(alliance.name, alliance.shortName, alliance.memberCount))
+    if alliance.memberCount >= 1000:
+        print("{} <{}> has {} members".format(
+            alliance.name, alliance.shortName, alliance.memberCount))
 
 
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 print()
 print("EXAMPLE 2: GETTING WALLET BALANCE OF ALL YOUR CHARACTERS")
 print()
@@ -98,17 +99,16 @@ rich_charID = 0
 # Now the best way to iterate over the characters on your account and show
 # the isk balance is probably this way:
 for character in result2.characters:
-	wallet = auth.char.AccountBalance(characterID=character.characterID)
-	isk = wallet.accounts[0].balance
-	print(character.name, "has", isk, "ISK.")
+    wallet = auth.char.AccountBalance(characterID=character.characterID)
+    isk = wallet.accounts[0].balance
+    print("{} has {:,.2f} ISK.".format(character.name, isk))
 
-	if isk > rich:
-		rich = isk
-		rich_charID = character.characterID
+    if isk > rich:
+        rich = isk
+        rich_charID = character.characterID
 
 
-
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 print()
 print("EXAMPLE 3: WHEN STUFF GOES WRONG")
 print()
@@ -131,18 +131,18 @@ print()
 #
 
 try:
-	# Try calling account/Characters without authentication context
-	api.account.Characters()
+    # Try calling account/Characters without authentication context
+    api.account.Characters()
 except eveapi.Error as e:
-	print("Oops! eveapi returned the following error:")
-	print("code:", e.code)
-	print("message:", e.message)
+    print("Oops! eveapi returned the following error:")
+    print("code:", e.code)
+    print("message:", e.message)
 except Exception as e:
-	print("Something went horribly wrong:", str(e))
-	raise
+    print("Something went horribly wrong:", str(e))
+    raise
 
 
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 print()
 print("EXAMPLE 4: GETTING CHARACTER SHEET INFORMATION")
 print()
@@ -185,34 +185,37 @@ total_skills = 0
 # tree...
 for g in skilltree.skillGroups:
 
-	skills_trained_in_this_group = False
+    skills_trained_in_this_group = False
 
-	# ... iterate over the skills in this group...
-	for skill in g.skills:
+    # ... iterate over the skills in this group...
+    for skill in g.skills:
 
-		# see if we trained this skill by checking the character sheet object
-		trained = sheet.skills.Get(skill.typeID, False)
-		if trained:
-			# yep, we trained this skill.
+        # see if we trained this skill by checking the character sheet object
+        trained = sheet.skills.Get(skill.typeID, False)
+        if trained:
+            # yep, we trained this skill.
 
-			# print the group name if we haven't done so already
-			if not skills_trained_in_this_group:
-				print(g.groupName)
-				skills_trained_in_this_group = True
+            # print the group name if we haven't done so already
+            if not skills_trained_in_this_group:
+                print(g.groupName)
+                skills_trained_in_this_group = True
 
-			# and display some info about the skill!
-			print("- %s Rank(%d) - SP: %d/%d - Level: %d" %\
-				(skill.typeName, skill.rank, trained.skillpoints, (skill.rank * sp[trained.level]), trained.level))
-			total_skills += 1
-			total_sp += trained.skillpoints
+            # and display some info about the skill!
+            print("- {} Rank({}) - SP: {}/{} - Level: {}".format(
+                skill.typeName, skill.rank, trained.skillpoints,
+                (skill.rank * sp[trained.level]), trained.level)
+            )
+            total_skills += 1
+            total_sp += trained.skillpoints
 
 
 # And to top it off, display totals.
-print("You currently have %d skills and %d skill points" % (total_skills, total_sp))
+print("You currently have {} skills and {:,d} skill points".format(
+    total_skills, total_sp)
+)
 
 
-
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 print()
 print("EXAMPLE 5: USING ROWSETS")
 print()
@@ -230,7 +233,7 @@ rowset.SortBy("shortName")
 # Note the use of Select() here. The Select method speeds up iterating over
 # large rowsets considerably as no temporary row instances are created.
 for ticker in rowset.Select("shortName"):
-	print(ticker, end=' ')
+    print(ticker, end=' ')
 print()
 
 # The sort above modified the result inplace. There is another method, called
@@ -253,9 +256,9 @@ alliances_by_ticker = rowset.IndexedBy("shortName")
 # Assumes ISD alliance exists. If it doesn't, we probably have bigger
 # problems than the unhandled exception here -_-
 try:
-	print(alliances_by_ticker.Get("ISD"))
-except :
-	print("Blimey! CCP let the ISD alliance expire -AGAIN-. How inconvenient!")
+    print(alliances_by_ticker.Get("ISD"))
+except:
+    print("Blimey! CCP let the ISD alliance expire -AGAIN-. How inconvenient!")
 
 # You may specify a default to return in case the row wasn't found:
 print(alliances_by_ticker.Get("123456", 42))
@@ -263,13 +266,12 @@ print(alliances_by_ticker.Get("123456", 42))
 # If no default was specified and you try to look up a key that does not
 # exist, an appropriate exception will be raised:
 try:
-	print(alliances_by_ticker.Get("123456"))
+    print(alliances_by_ticker.Get("123456"))
 except KeyError:
-	print("This concludes example 5")
+    print("This concludes example 5")
 
 
-
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 print()
 print("EXAMPLE 6: CACHING DATA")
 print()
@@ -278,78 +280,80 @@ print()
 # cache handler can be attached. Below is an example of a simple cache
 # handler.
 
+
 class MyCacheHandler(object):
-	# Note: this is an example handler to demonstrate how to use them.
-	# a -real- handler should probably be thread-safe and handle errors
-	# properly (and perhaps use a better hashing scheme).
+    # Note: this is an example handler to demonstrate how to use them.
+    # a -real- handler should probably be thread-safe and handle errors
+    # properly (and perhaps use a better hashing scheme).
 
-	def __init__(self, debug=False):
-		self.debug = debug
-		self.count = 0
-		self.cache = {}
-		self.tempdir = join(tempfile.gettempdir(), "eveapi")
-		if not exists(self.tempdir):
-			os.makedirs(self.tempdir)
+    def __init__(self, debug=False):
+        self.debug = debug
+        self.count = 0
+        self.cache = {}
+        self.tempdir = join(tempfile.gettempdir(), "eveapi")
+        if not exists(self.tempdir):
+            os.makedirs(self.tempdir)
 
-	def log(self, what):
-		if self.debug:
-			print("[%d] %s" % (self.count, what))
+    def log(self, what):
+        if self.debug:
+            print("[%d] %s" % (self.count, what))
 
-	def retrieve(self, host, path, params):
-		# eveapi asks if we have this request cached
-		key = hash((host, path, frozenset(list(params.items()))))
+    def retrieve(self, host, path, params):
+        # eveapi asks if we have this request cached
+        key = hash((host, path, frozenset(list(params.items()))))
 
-		self.count += 1  # for logging
+        self.count += 1  # for logging
 
-		# see if we have the requested page cached...
-		cached = self.cache.get(key, None)
-		if cached:
-			cacheFile = None
-			#print "'%s': retrieving from memory" % path
-		else:
-			# it wasn't cached in memory, but it might be on disk.
-			cacheFile = join(self.tempdir, str(key) + ".cache")
-			if exists(cacheFile):
-				self.log("%s: retrieving from disk" % path)
-				f = open(cacheFile, "rb")
-				cached = self.cache[key] = pickle.loads(zlib.decompress(f.read()))
-				f.close()
+        # see if we have the requested page cached...
+        cached = self.cache.get(key, None)
+        if cached:
+            cacheFile = None
+            # print "'%s': retrieving from memory" % path
+        else:
+            # it wasn't cached in memory, but it might be on disk.
+            cacheFile = join(self.tempdir, str(key) + ".cache")
+            if exists(cacheFile):
+                self.log("%s: retrieving from disk" % path)
+                with open(cacheFile, "rb") as opencache:
+                    cached = self.cache[key] = pickle.loads(zlib.decompress(
+                        opencache.read())
+                    )
 
-		if cached:
-			# check if the cached doc is fresh enough
-			if time.time() < cached[0]:
-				self.log("%s: returning cached document" % path)
-				return cached[1]  # return the cached XML doc
+        if cached:
+            # check if the cached doc is fresh enough
+            if time.time() < cached[0]:
+                self.log("%s: returning cached document" % path)
+                return cached[1]  # return the cached XML doc
 
-			# it's stale. purge it.
-			self.log("%s: cache expired, purging!" % path)
-			del self.cache[key]
-			if cacheFile:
-				os.remove(cacheFile)
+            # it's stale. purge it.
+            self.log("%s: cache expired, purging!" % path)
+            del self.cache[key]
+            if cacheFile:
+                os.remove(cacheFile)
 
-		self.log("%s: not cached, fetching from server..." % path)
-		# we didn't get a cache hit so return None to indicate that the data
-		# should be requested from the server.
-		return None
+        self.log("%s: not cached, fetching from server..." % path)
+        # we didn't get a cache hit so return None to indicate that the data
+        # should be requested from the server.
+        return None
 
-	def store(self, host, path, params, doc, obj):
-		# eveapi is asking us to cache an item
-		key = hash((host, path, frozenset(list(params.items()))))
+    def store(self, host, path, params, doc, obj):
+        # eveapi is asking us to cache an item
+        key = hash((host, path, frozenset(list(params.items()))))
 
-		cachedFor = obj.cachedUntil - obj.currentTime
-		if cachedFor:
-			self.log("%s: cached (%d seconds)" % (path, cachedFor))
+        cachedFor = obj.cachedUntil - obj.currentTime
+        if cachedFor:
+            self.log("%s: cached (%d seconds)" % (path, cachedFor))
 
-			cachedUntil = time.time() + cachedFor
+            cachedUntil = time.time() + cachedFor
 
-			# store in memory
-			cached = self.cache[key] = (cachedUntil, doc)
+            # store in memory
+            cached = self.cache[key] = (cachedUntil, doc)
 
-			# store in cache folder
-			cacheFile = join(self.tempdir, str(key) + ".cache")
-			f = open(cacheFile, "wb")
-			f.write(zlib.compress(pickle.dumps(cached, -1)))
-			f.close()
+            # store in cache folder
+            cacheFile = join(self.tempdir, str(key) + ".cache")
+            f = open(cacheFile, "wb")
+            f.write(zlib.compress(pickle.dumps(cached, -1)))
+            f.close()
 
 
 # Now try out the handler! Even though were initializing a new api object
@@ -366,8 +370,7 @@ result = cachedApi.eve.SkillTree()
 result = cachedApi.eve.SkillTree()
 
 
-
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 print()
 print("EXAMPLE 7: TRANSACTION DATA")
 print("(and doing more nifty stuff with rowsets)")
@@ -403,24 +406,37 @@ entriesByRefType = journal.transactions.GroupedBy("refTypeID")
 # Note the use of Select() to speed things up here.
 amount = 0.0
 date = 0
-for taxAmount, date in entriesByRefType[54].Select("amount", "date"):
-	amount += -taxAmount
+try:
+    for taxAmount, date in entriesByRefType[54].Select("amount", "date"):
+        amount += -taxAmount
+except KeyError:  # no taxes paid
+    pass
 
-print("You paid a %.2f ISK transaction tax since %s" %\
-	(amount, time.asctime(time.gmtime(date))))
+print("You paid a {:,.2f} ISK transaction tax since {}".format(
+    amount,
+    time.asctime(time.gmtime(date)),
+))
 
 
 # You might also want to see how much a certain item yielded you recently.
 typeName = "Expanded Cargohold II"  # change this to something you sold.
 amount = 0.0
+date = 0
 
 wallet = me.WalletTransactions()
-soldTx = wallet.transactions.GroupedBy("transactionType")["sell"]
-for row in soldTx.GroupedBy("typeName")[typeName]:
-	amount += (row.quantity * row.price)
+try:
+    soldTx = wallet.transactions.GroupedBy("transactionType")["sell"]
+    for row in soldTx.GroupedBy("typeName")[typeName]:
+        amount += (row.quantity * row.price)
+        date = row.transactionDateTime
+except KeyError:  # has not sold any
+    pass
 
-print("%s sales yielded %.2f ISK since %s" %\
-	(typeName, amount, time.asctime(time.gmtime(row.transactionDateTime))))
+print("{} sales yielded {:,.2f} ISK since {}".format(
+    typeName,
+    amount,
+    time.asctime(time.gmtime(date)),
+))
 
 # I'll leave walking the transaction pages as an excercise to the reader ;)
 # Please also see the eveapi module itself for more documentation.
